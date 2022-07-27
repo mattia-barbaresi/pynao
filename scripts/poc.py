@@ -107,6 +107,16 @@ def normalize(v):
 
 
 def look_at(eye: np.array, target: np.array):
+    """
+    LookAt method for camera orientations.
+    LIMITATIONS:
+    When the camera is vertical looking straight down or straight up, the forward axis gets very close to the arbitrary
+    axis used to compute the right axis. The extreme case is of course when the froward axis and this arbitrary axis are
+    perfectly parallel e.g. when the forward vector is either (0,1,0) or (0,-1,0). Unluckily, in this particular case,
+    the cross product fails producing a result for the right vector. There is actually no real solution to this problem.
+    You can either detect this case, and choose to set the vectors by hand (since you know what the configuration of the
+    vectors should be anyway). A more elegant solution can be developed using quaternion interpolation."""
+
     axis_z = normalize((eye - target))
 
     if vec_length(axis_z) == 0:
@@ -118,12 +128,12 @@ def look_at(eye: np.array, target: np.array):
         axis_x = np.array((1, 0, 0))
 
     axis_y = np.cross(axis_z, axis_x)
-    rot_matrix = np.matrix([axis_x, axis_y, axis_z]).transpose()
-    return rot_matrix
+
+    return np.matrix([axis_x, axis_y, axis_z]).transpose()
 
 
 class PocInterface(object):
-    """PocInterface"""
+    """PocInterface class"""
 
     def __init__(self):
         super(PocInterface, self).__init__()
@@ -164,31 +174,6 @@ class PocInterface(object):
         # Misc variables
         self.box_name = "box"
 
-    def go_to_joint_state(self):
-        move_group = moveit_commander.MoveGroupCommander("left_arm")
-        # We get the joint values from the group and change some of the values:
-        joint_goal = move_group.get_current_joint_values()
-        joint_goal[0] = 0
-        joint_goal[1] = -tau / 8
-        joint_goal[2] = 0
-        joint_goal[3] = -tau / 4
-        joint_goal[4] = 0
-        joint_goal[5] = tau / 6  # 1/6 of a turn
-        joint_goal[6] = 0
-
-        # The go command can be called with joint values, poses, or without any
-        # parameters if you have already set the pose or joint target for the group
-        move_group.go(joint_goal, wait=True)
-
-        # Calling ``stop()`` ensures that there is no residual movement
-        move_group.stop()
-
-        # END_SUB_TUTORIAL
-
-        # For testing:
-        current_joints = move_group.get_current_joint_values()
-        return all_close(joint_goal, current_joints, 0.01)
-
     def go_to_pose_goal(self):
         # Planning to a Pose Goal
         # ^^^^^^^^^^^^^^^^^^^^^^^
@@ -196,8 +181,6 @@ class PocInterface(object):
         current_pose = move_group.get_current_pose()
         print('================== Current pose:\n', current_pose)
 
-        # We can plan a motion for this group to a desired pose for the
-        # end-effector:
         pose_goal = geometry_msgs.msg.Pose()
         # pose_goal = current_pose.pose
 
@@ -292,8 +275,8 @@ class PocInterface(object):
                 rp_goal.header.seq = i
                 rp_goal.header.frame_id = "base_link"
                 rp_goal.pose.position.x, rp_goal.pose.position.y, rp_goal.pose.position.z = self.convert_point(row[rpi])
-                print("equal points?? -> ", [self.convert_point(row[rpi])], self.rotate_point(row[rpi]))
-                print("result: ?? -> ", all_close([self.convert_point(row[rpi])], self.rotate_point(row[rpi]), 0.000001))
+                print("equal points?? -> ", list(self.convert_point(row[rpi])), self.rotate_point(row[rpi]))
+                print("result:  ", all_close(list(self.convert_point(row[rpi])), list(self.rotate_point(row[rpi])), 0.00001))
                 # to homogenous coordinates orientation
                 rp_goal.pose.orientation = Quaternion(*transformations.quaternion_from_matrix(rmtx_to_homo(ror)))
                 print("R orientation: ", rp_goal.pose.orientation)
@@ -441,14 +424,11 @@ class PocInterface(object):
 
     @staticmethod
     def convert_point(coords):
-        # r = 0.45
-        r = 1.0
-        # h = 0.1
-        h = 0.0
-        x = - float(coords[2]) * r  # x' = -rz
+        r = 0.45
+        h = 0.1
+        x = - float(coords[2]) * r  # should be x' = rz but -> x' = -rz (for flipping)
         y = - float(coords[0]) * r  # y' = -rx
-        z = (- float(coords[1]) * r) - h  # z' = -y-h (to lower the center a bit)
-        # return x, y, z
+        z = (- float(coords[1]) * r) - h  # z' = -ry - h  (to lower the center a bit)
         return x, y, z
 
     @staticmethod
