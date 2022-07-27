@@ -46,14 +46,14 @@ def get_R():
     b = math.pi / 2  # -90° in z
 
     Rx = np.array([
-        [1, 0, 0],
-        [0, math.cos(a), math.sin(a)],
-        [0, -math.sin(a), math.cos(a)]
+        [1.0, 0.0, 0.0],
+        [0.0, math.cos(a), math.sin(a)],
+        [0.0, -math.sin(a), math.cos(a)]
     ])
     Ry = np.array([
-        [math.cos(b), 0, math.sin(b)],
-        [0, 1, 0],
-        [-math.sin(b), 0, math.cos(b)]
+        [math.cos(b), 0.0, math.sin(b)],
+        [0.0, 1.0, 0.0],
+        [-math.sin(b), 0.0, math.cos(b)]
     ])
 
     return np.matmul(Rx, Ry)  # z is eye -> no rotation needed
@@ -283,7 +283,6 @@ class PocInterface(object):
                 angl = (-angl[0], angl[1], angl[2])
                 lp_goal.pose.orientation = Quaternion(*transformations.quaternion_from_euler(*angl))
                 print("L orientation: ", lp_goal.pose.orientation)
-                # lp_goal.pose.orientation = self.mtx_to_orient(lor)
                 mg_left.set_joint_value_target(lp_goal, arg3=True)
                 # mg_left.set_pose_target(lp_goal)
                 print('lp_goal:\n', lp_goal)
@@ -293,11 +292,11 @@ class PocInterface(object):
                 rp_goal.header.seq = i
                 rp_goal.header.frame_id = "base_link"
                 rp_goal.pose.position.x, rp_goal.pose.position.y, rp_goal.pose.position.z = self.convert_point(row[rpi])
-                print("equal points?? -> ", rp_goal.pose.position, self.rotate_point(row[rpi]))
+                print("equal points?? -> ", [self.convert_point(row[rpi])], self.rotate_point(row[rpi]))
+                print("result: ?? -> ", all_close([self.convert_point(row[rpi])], self.rotate_point(row[rpi]), 0.000001))
                 # to homogenous coordinates orientation
                 rp_goal.pose.orientation = Quaternion(*transformations.quaternion_from_matrix(rmtx_to_homo(ror)))
                 print("R orientation: ", rp_goal.pose.orientation)
-                # rp_goal.pose.orientation = self.mtx_to_orient(ror)
                 mg_right.set_joint_value_target(rp_goal, arg3=True)
                 # mg_right.set_pose_target(rp_goal)
                 print('rp_goal:\n', rp_goal)
@@ -455,27 +454,6 @@ class PocInterface(object):
     @staticmethod
     def rotate_point(coords):
         return np.matmul(get_R(), coords)
-
-    def mtx_to_orient(self, mtx):
-        if mtx[2, 2] < 0:
-            if mtx[0, 0] > mtx[1, 1]:
-                t = 1 + mtx[0, 0] - mtx[1, 1] - mtx[2, 2]
-                q = Quaternion(t, mtx[0, 1] + mtx[1, 0], mtx[2, 0] + mtx[0, 2], mtx[1, 2] - mtx[2, 1])
-            else:
-                t = 1 - mtx[0, 0] + mtx[1, 1] - mtx[2, 2]
-                q = Quaternion(mtx[0, 1] + mtx[1, 0], t, mtx[1, 2] + mtx[2, 1], mtx[2, 0] - mtx[0, 2])
-        else:
-            if mtx[0, 0] < -mtx[1, 1]:
-                t = 1 - mtx[0, 0] - mtx[1, 1] + mtx[2, 2]
-                q = Quaternion(mtx[2, 0] + mtx[0, 2], mtx[1, 2] + mtx[2, 1], t, mtx[0, 1] - mtx[1, 0])
-            else:
-                t = 1 + mtx[0, 0] + mtx[1, 1] + mtx[2, 2]
-                q = Quaternion(mtx[1, 2] - mtx[2, 1], mtx[2, 0] - mtx[0, 2], mtx[0, 1] - mtx[1, 0], t)
-        q.x *= 0.5 / np.sqrt(t)
-        q.y *= 0.5 / np.sqrt(t)
-        q.z *= 0.5 / np.sqrt(t)
-        q.w *= 0.5 / np.sqrt(t)
-        return q
 
 
 def main():
