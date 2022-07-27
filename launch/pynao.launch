@@ -1,0 +1,5 @@
+<launch>
+  <node pkg="pynao" name="poc" type="poc.py" respawn="false" output="screen"/>
+  <!--   <node pkg="pynao" name="sender" type="sender.py"/> -->
+  <!--   <node pkg="pynao" name="receiver" type="receiver.py/> -->
+</launch>

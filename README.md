@@ -1,2 +1,3 @@
 # pynao
-Python module for Ros/Moveit Nao configuration
+
+A ROS package with Python modules for Moveit/Nao configuration
